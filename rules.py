@@ -1,6 +1,7 @@
 # Contains boilerplate related to different
 # rules in different puzzle types.
 import math
+from typing import Iterable, Any
 
 class Rule():
 
@@ -9,6 +10,7 @@ class Rule():
         self.states = states
         self.height, self.width = self.board.height, self.board.width
         self.add_exclusive = add_exclusive # add exclusive variables at this level
+        self.linked_to_cnf = False
 
     def flatten_rules(self):
         return [self]
@@ -18,6 +20,8 @@ class Rule():
         Creates a reference to the CNFSolver object it will generate rules for.
         """
         self.cnf = cnf_obj
+        self.linked_to_cnf = True
+        self.formula_contribution = {}
 
     def add_states_to_overall(self):
         """
@@ -59,16 +63,20 @@ class Rule():
         var_map = self.cnf.var_map
         idx = len(formula)
         formula[idx] = clause
+        self.formula_contribution[idx] = clause # for printing / debugging
         for var, literal in clause.items():
             temp = var_map.setdefault(var, {})
             temp.setdefault(literal, set()).add(idx)
         return None
 
     def add_formulas(self):
-        raise NotImplementedError("A Rule object must add clauses to the overall formula.")
+        pass
+
+    def __repr__(self):
+        return f"{self.__class__.__name__} over states {self.states} with rules:\n{self.formula_contribution}"
 
     @staticmethod
-    def construct_subsets(inp, n):
+    def construct_subsets(inp: list[Any], n: int):
         """
         Given an iterable `inp`, returns a generator object yielding all
         subsets of `inp` of size `n` as tuples. Assumes that n is less than
@@ -88,6 +96,7 @@ class Rule():
                 for sub_idx in range(meta_idx+1, n):
                     idxs[sub_idx] = idx + sub_idx - meta_idx + 1
                 break
+
 
 class SuperRule():
     """

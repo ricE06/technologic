@@ -6,6 +6,7 @@
 from rules import Rule
 import sys
 import copy
+import pprint
 
 
 class CNFSolver():
@@ -93,6 +94,8 @@ class CNFSolver():
         """
         if state_num is None:
             state_num = self.state_map[state_name]
+        assert state_num >= 0
+        assert row_idx >= 0 and col_idx >= 0
         return (self.width*row_idx + col_idx)*self.numstates+state_num
 
     def find_exclusive_states(self, entry, already_subbed):
@@ -118,7 +121,7 @@ class CNFSolver():
         return out_set
         
 
-    def solve(self, verbose=False):
+    def solve(self, verbose=False, max_sols=100):
         """
         Solves the system. Returns a dictionary of {var: literal} if
         the CNF system is solvable, and None if not.
@@ -145,12 +148,15 @@ class CNFSolver():
         formula_dict, var_map = self.formula, self.var_map
         overall_solutions = [] # only modified if we know it works
         already_subbed = {} # modified as we go, set of vars that already substituted
+        changed_visible = {}
         # first pass base cases
         if len(formula_dict) == 0:
-            return overall_out
+            yield overall_out
+            return
         for clause in formula_dict.values():
             if len(clause) == 0:
-                return None
+                yield None
+                return
 
         def modify_formula_dict(inp_formula, inp_map, inp_entries):
             """
@@ -172,9 +178,11 @@ class CNFSolver():
                 print(f"{inp_entries=}")
             if not sub_entries:
                 raise Exception
+            if verbose: print(f"{sub_entries=}")
             for sub_var, sub_literal in sub_entries:
                 if sub_var in already_subbed: 
                     continue
+                # if sub_var in self.board.visible_states:
                 if flag is False or sub_var in seen_subvars:
                     flag = False
                     break # second condition only possible if somehow we forced a variable to be true and false
@@ -196,6 +204,7 @@ class CNFSolver():
                     )
                     del inp_formula[clause_id][sub_var]
                     if not inp_formula[clause_id]:
+                        if verbose: print(f"Contradiction found at clause #{clause_id}")
                         flag = False  # impossible, short circuit asap
                         break
                 add_back_inp_map[sub_var] = inp_map[sub_var]
@@ -224,7 +233,7 @@ class CNFSolver():
             """
             if verbose:
                print(f"Substituting at depth #{calls_made}, {state}, {forcing=}")
-            if len(overall_solutions) >= 100:
+            if len(overall_solutions) >= max_sols:
                 return None
 
             def get_one_item(dic, unit=True):
@@ -298,13 +307,16 @@ class CNFSolver():
             if len(overall_solutions) >= 100:
                 print("Warning: search terminated after finding 100 solutions")
 #             assert overall_out.keys() == already_subbed
-            self.solution = overall_solutions[0]
             print(f"{len(overall_solutions)} solution(s) found.")
-            return self.solution
+            for solution in overall_solutions:
+                self.solution = solution
+                yield self.solution
+            print(f"No more solutions found")
+            return
 #             return overall_out
-        print("No solution was found")
+        print("No solutions found")
         self.solution = None
-        return None
+        yield None
 
     def generate_solved_board(self):
         new_board = copy.deepcopy(self.board)

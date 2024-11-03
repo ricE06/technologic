@@ -13,7 +13,8 @@ def test_sudoku(test_boards):
     for board, puzzle in test_boards:
         sudoku_solver = CNFSolver(board, [puzzle])
         start_time = time.perf_counter()
-        sudoku_solver.solve()
+        solver = sudoku_solver.solve()
+        next(solver)
         end_time = time.perf_counter()
         solved = sudoku_solver.generate_solved_board()
         print(solved)
